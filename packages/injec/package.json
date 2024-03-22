@@ -1,0 +1,49 @@
+{
+  "name": "@attac/injec",
+  "version": "0.1.0",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm,cjs",
+    "dev": "pnpm build --watch",
+    "typecheck": "tstyche",
+    "test": "TSIMP_DIAG=ignore node --test --import=tsimp/import --watch src/test/*.test.ts",
+    "cov": "c8 node --test --import=tsimp/import src/test/*.test.ts"
+  },
+  "keywords": [],
+  "author": "Joseph Shaferman <joseph.shaferman@gmail.com>",
+  "license": "MIT",
+  "imports": {
+    "#src/*": "./src/*.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.27",
+    "c8": "^9.1.0",
+    "prettier": "^3.2.5",
+    "tsimp": "^2.0.11",
+    "tstyche": "^1.1.0",
+    "tsup": "^8.0.2",
+    "typescript": "^5.4.2"
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "semi": false,
+    "trailingComma": "all"
+  },
+  "c8": {
+    "all": true,
+    "100": false,
+    "include": [
+      "src/**/*"
+    ],
+    "exclude": [
+      "src/test/**/*"
+    ],
+    "reporter": [
+      "text",
+      "html"
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "name": "@attac/protec",
+  "version": "0.1.0",
+  "description": "",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tstyche",
+    "test": "node --test --import=tsimp/import --watch src/test/*.test.ts",
+    "test:only": "node --test --import=tsimp/import --watch src/test/only.test.ts",
+    "cov": "c8 node --test --import=tsimp/import src/test/*.test.ts"
+  },
+  "imports": {
+    "#src/*": "./src/*.ts"
+  },
+  "keywords": [],
+  "author": "Joseph Shaferman <joseph.shaferman@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.27",
+    "c8": "^9.1.0",
+    "prettier": "^3.2.5",
+    "tsimp": "^2.0.11",
+    "tstyche": "^1.1.0",
+    "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "@attac/injec": "link:../injec"
+  },
+  "prettier": {
+    "bracketSpacing": false,
+    "semi": false,
+    "trailingComma": "all"
+  },
+  "c8": {
+    "all": true,
+    "100": false,
+    "include": [
+      "src/**/*"
+    ],
+    "exclude": [
+      "src/test/**/*"
+    ],
+    "reporter": [
+      "text",
+      "html"
+    ]
+  }
+}
