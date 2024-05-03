@@ -13,6 +13,7 @@ export interface FlatResource {
   symbol: symbol
   instance: TestClass
   methodScalar: () => string
+  methodPromiseScalar: () => Promise<string>
   methodComposite: () => {foo: string}
 }
 
@@ -23,6 +24,7 @@ export const FLAT_RESOURCE: FlatResource = {
   symbol: Symbol(),
   instance: new TestClass(),
   methodScalar: () => "",
+  methodPromiseScalar: () => Promise.resolve(""),
   methodComposite: () => ({foo: ""}),
 }
 
@@ -40,6 +42,18 @@ function assertScalarFunction(value: any) {
   assert.equal(typeof value, "function")
   assert.equal(value[SYMBOL_CONTEXT], undefined, "not context")
   assert.equal(typeof value(), "string", "Returns a scalar type")
+}
+
+async function assertScalarPromiseFunction(value: any) {
+  assert.equal(typeof value, "function")
+  assert.equal(value[SYMBOL_CONTEXT], undefined, "not context")
+  assert.equal(typeof value(), "object", "Returns an object")
+  assert.equal(typeof value().then, "function", "Returns a promise")
+  assert.equal(
+    typeof (await value()),
+    "string",
+    "Promise resolves with a string value",
+  )
 }
 
 function assertCompositeFunction(value: any) {
@@ -69,6 +83,7 @@ export async function assertContext(
     assert.equal(typeof context.symbol, "symbol")
 
     assertScalarFunction(context.methodScalar)
+    await assertScalarPromiseFunction(context.methodPromiseScalar)
     assertCompositeFunction(context.methodComposite)
     assertInstance(context.instance)
 

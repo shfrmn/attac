@@ -72,16 +72,21 @@ export function createContext<const Resource extends RecordResource, State>(
       const getNextContext = (nextState: State) => {
         return isFunction(nextResource)
           ? (...args: any[]) => {
-              const result = nextResource.call(context, args)
-              return isScalar(result) // TODO: handle view & functions
-                ? result
-                : createContext(
-                    result,
-                    nextPrefix,
-                    rootContext ?? context,
-                    hook,
-                    nextState,
-                  )
+              const result = nextResource.apply(context, args)
+              const isPromise = typeof (result as any)?.then === "function"
+              const wrap = (result: AnyResource) =>
+                isScalar(result) // TODO: handle view & functions
+                  ? result
+                  : createContext(
+                      result,
+                      nextPrefix,
+                      rootContext ?? context,
+                      hook,
+                      nextState,
+                    )
+              return isPromise
+                ? (result as Promise<AnyResource>).then(wrap)
+                : wrap(result)
             }
           : createContext(
               nextResource,
