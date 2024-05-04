@@ -28,7 +28,8 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@attac/injec": "link:../injec"
+    "@attac/injec": "link:../injec",
+    "modern-errors": "^7.0.1"
   },
   "prettier": {
     "bracketSpacing": false,

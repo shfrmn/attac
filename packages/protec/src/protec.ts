@@ -5,6 +5,7 @@ import {
   Inject,
   SYMBOL_CONTEXT,
 } from "@attac/injec"
+import {AccessError} from "./error"
 
 /**
  *
@@ -81,7 +82,9 @@ export function protec<
       }
       if (typeof nextContext === "undefined") {
         const pathString = path.map((prop) => prop.toString()).join("/")
-        throw new Error(`Unauthorized access: ${pathString}`)
+        throw new AccessError(`Unauthorized access: ${pathString}`, {
+          props: {path},
+        })
       }
       if (path[path.length - 1] === SYMBOL_CONTEXT) {
         return (nextContext as RecordResource)[path[0]!]
