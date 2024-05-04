@@ -56,6 +56,12 @@ function assertArray(value: any) {
   assert.ok(Array.isArray(value.map((el) => el + 1)))
 }
 
+function assertMap(value: any) {
+  assert.ok(value instanceof Map)
+  assert.doesNotThrow(() => value.values(), "Can iterate over a map")
+  assert.doesNotThrow(() => value.entries().next(), "Can iterate over entries")
+}
+
 function assertScalarFunction(value: any) {
   assert.equal(typeof value, "function")
   assert.equal(value[SYMBOL_CONTEXT], undefined, "not context")
@@ -103,9 +109,9 @@ export async function assertContext(
       () => context.nonConfigurable,
       "Can access non-configurable property",
     )
-    assert.doesNotThrow(() => context.map.values(), "Can iterate over a map")
 
     assertArray(context.array)
+    assertMap(context.map)
     assertScalarFunction(context.methodScalar)
     await assertScalarPromiseFunction(context.methodPromiseScalar)
     assertCompositeFunction(context.methodComposite)

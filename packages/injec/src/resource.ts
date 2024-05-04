@@ -63,9 +63,22 @@ export function isFunction(
 }
 
 /**
+ *
+ */
+const trustedIterators = new Set([
+  new Set().entries().constructor,
+  new Map().entries().constructor,
+])
+
+/**
  * This function is used to determine exceptions when method
  * should be bound to a real `this` value (instead of context)
  */
 export function isTrustedThis(value: any): boolean {
-  return value instanceof Date || value instanceof Set || value instanceof Map
+  return (
+    value instanceof Date ||
+    value instanceof Set ||
+    value instanceof Map ||
+    trustedIterators.has(value.constructor)
+  )
 }
