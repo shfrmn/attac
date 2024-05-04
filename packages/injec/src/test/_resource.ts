@@ -12,6 +12,9 @@ export interface FlatResource {
   number: number
   symbol: symbol
   instance: TestClass
+  nonConfigurable: {}
+  array: number[]
+  map: Map<number, string>
   methodScalar: () => string
   methodPromiseScalar: () => Promise<string>
   methodComposite: () => {foo: string}
@@ -22,11 +25,20 @@ export const FLAT_RESOURCE: FlatResource = {
   string: "",
   number: 0,
   symbol: Symbol(),
+  nonConfigurable: {},
+  array: [1, 2],
+  map: new Map([[1, "hi"]]),
   instance: new TestClass(),
   methodScalar: () => "",
   methodPromiseScalar: () => Promise.resolve(""),
   methodComposite: () => ({foo: ""}),
 }
+
+Object.defineProperty(FLAT_RESOURCE, "nonConfigurable", {
+  enumerable: true,
+  configurable: false,
+  writable: false,
+})
 
 export interface EmptyContext {
   [SYMBOL_CONTEXT]: true
@@ -37,6 +49,12 @@ export type FlatContext = EmptyContext &
     instance: TestClass & EmptyContext
     methodComposite: () => {foo: string} & EmptyContext
   }
+
+function assertArray(value: any) {
+  assert.equal(value[SYMBOL_CONTEXT], undefined, "not context")
+  assert.ok(Array.isArray(value))
+  assert.ok(Array.isArray(value.map((el) => el + 1)))
+}
 
 function assertScalarFunction(value: any) {
   assert.equal(typeof value, "function")
@@ -81,7 +99,13 @@ export async function assertContext(
     assert.equal(typeof context.string, "string")
     assert.equal(typeof context.number, "number")
     assert.equal(typeof context.symbol, "symbol")
+    assert.doesNotThrow(
+      () => context.nonConfigurable,
+      "Can access non-configurable property",
+    )
+    assert.doesNotThrow(() => context.map.values(), "Can iterate over a map")
 
+    assertArray(context.array)
     assertScalarFunction(context.methodScalar)
     await assertScalarPromiseFunction(context.methodPromiseScalar)
     assertCompositeFunction(context.methodComposite)
@@ -91,6 +115,15 @@ export async function assertContext(
       (context as any)["covfefe"],
       undefined,
       "non-existent property is undefined",
+    )
+  })
+
+  await t.test("Enumeration", () => {
+    const copy = {...context}
+    assert.ok(
+      Object.getOwnPropertyNames(copy).length >=
+        Object.getOwnPropertyNames(FLAT_RESOURCE).length,
+      "All enumerable properties are preserved",
     )
   })
 }

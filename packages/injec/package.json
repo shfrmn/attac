@@ -30,7 +30,8 @@
   "prettier": {
     "bracketSpacing": false,
     "semi": false,
-    "trailingComma": "all"
+    "trailingComma": "all",
+    "experimentalTernaries": true
   },
   "c8": {
     "all": true,

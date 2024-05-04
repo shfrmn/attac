@@ -5,6 +5,7 @@ import {
   RecordResource,
   isScalar,
   isFunction,
+  isTrustedThis,
 } from "#src/resource"
 import {Inject, View, resolveView} from "#src/view"
 import {Hook} from "#src/hook"
@@ -30,17 +31,20 @@ export interface AnyContext {
 /**
  *
  */
-export type Context<Resource> = Resource extends ScalarResource
-  ? Resource
-  : Resource extends (...args: infer Args) => infer Return
-    ? (...args: Args) => Context<Return>
-    : Resource extends View<infer T>
-      ? Inject<T>
-      : Resource extends Record<any, any>
-        ? AnyContext & {
-            [Capability in keyof Resource]: Context<Resource[Capability]>
-          }
-        : never
+export type Context<Resource> =
+  Resource extends ScalarResource ? Resource
+  : Resource extends [...any] ?
+    {[K in keyof Resource]: Context<Resource[K]>} // Tuples must be handled separately from arrays
+  : Resource extends (infer E)[] ? Context<E>[]
+  : Resource extends Promise<infer R> ? Promise<Context<R>>
+  : Resource extends (...args: any[]) => infer Return ?
+    (...args: Parameters<Resource>) => Context<Return>
+  : Resource extends View<infer T> ? Inject<T>
+  : Resource extends Record<any, any> ?
+    AnyContext & {
+      [Capability in keyof Resource]: Context<Resource[Capability]>
+    }
+  : never
 
 /**
  *
@@ -52,13 +56,31 @@ export function createContext<const Resource extends RecordResource, State>(
   hook: Hook<State>,
   state: State,
 ): Context<Resource> {
-  return new Proxy(resource as Context<Resource>, {
+  const descriptors: Record<string | symbol, PropertyDescriptor> = {}
+  for (const capability of Reflect.ownKeys(resource)) {
+    descriptors[capability] = {
+      enumerable: true,
+      configurable: true,
+      writable: true,
+    }
+  }
+  // Specifying proxy target this way achieves the following goals:
+  // 1. Prototype of the proxy will be the same as the original
+  //    value (reason not to use `{}` as a target).
+  // 2. `Object.create` preserves the prototype, while also allowing
+  //    to override non-writable and non-configurable properties.
+  return new Proxy(Object.create(resource, descriptors) as Context<Resource>, {
+    // Third argument here is the resulting proxy
     get(_, capability, context: Context<Resource>) {
       wellKnownProps: switch (capability) {
         case SYMBOL_ROOT:
           return rootContext ?? context
         case SYMBOL_CONTEXT:
           return true
+        case Symbol.iterator:
+          return resource[Symbol.iterator]
+        case "toJSON":
+          return resource.toJSON || (() => resource)
       }
       const nextResource = resource[capability] as AnyResource
       if (isScalar(nextResource)) {
@@ -66,37 +88,51 @@ export function createContext<const Resource extends RecordResource, State>(
       }
       if (nextResource instanceof View) {
         const nextPrefix = [...prefix, capability, SYMBOL_CONTEXT]
-        return hook(state, () => resolveView(context, nextResource), nextPrefix)
+        return hook(
+          state,
+          () => resolveView(context as Context<RecordResource>, nextResource),
+          nextPrefix,
+        )
       }
       const nextPrefix = [...prefix, capability]
-      const getNextContext = (nextState: State) => {
-        return isFunction(nextResource)
-          ? (...args: any[]) => {
-              const result = nextResource.apply(context, args)
-              const isPromise = typeof (result as any)?.then === "function"
-              const wrap = (result: AnyResource) =>
-                isScalar(result) // TODO: handle view & functions
-                  ? result
-                  : createContext(
-                      result,
-                      nextPrefix,
-                      rootContext ?? context,
-                      hook,
-                      nextState,
-                    )
-              return isPromise
-                ? (result as Promise<AnyResource>).then(wrap)
-                : wrap(result)
-            }
-          : createContext(
-              nextResource,
-              nextPrefix,
-              rootContext ?? context,
-              hook,
-              nextState,
+      const wrap = (
+        nextResource: AnyResource,
+        nextState: State,
+      ): Context<AnyResource> => {
+        // TODO: handle view
+        if (isScalar(nextResource)) {
+          return nextResource
+        } else if (Array.isArray(nextResource)) {
+          return nextResource.map((nextResource) => {
+            return wrap(nextResource, nextState)
+          }) as unknown as Context<AnyResource>
+        } else if (nextResource instanceof Promise) {
+          return nextResource.then((nextResource) => {
+            return wrap(nextResource, nextState)
+          }) as unknown as Context<AnyResource>
+        } else if (isFunction(nextResource)) {
+          return (...args: any[]) => {
+            const returnValue = nextResource.apply(
+              isTrustedThis(resource) ? resource : context,
+              args,
             )
+            return wrap(returnValue, nextState)
+          }
+        } else {
+          return createContext(
+            nextResource,
+            nextPrefix,
+            (rootContext ?? context) as Context<RecordResource>,
+            hook,
+            nextState,
+          )
+        }
       }
-      const nextContext = hook(state, getNextContext, nextPrefix)
+      const nextContext = hook(
+        state,
+        (nextState) => wrap(nextResource, nextState),
+        nextPrefix,
+      )
       return nextContext === null ? nextResource : nextContext
     },
   })

@@ -61,3 +61,11 @@ export function isFunction(
 ): resource is FunctionResource {
   return typeof resource === "function"
 }
+
+/**
+ * This function is used to determine exceptions when method
+ * should be bound to a real `this` value (instead of context)
+ */
+export function isTrustedThis(value: any): boolean {
+  return value instanceof Date || value instanceof Set || value instanceof Map
+}
