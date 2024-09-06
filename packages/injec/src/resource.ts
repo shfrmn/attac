@@ -68,6 +68,7 @@ export function isFunction(
 const trustedIterators = new Set([
   new Set().entries().constructor,
   new Map().entries().constructor,
+  (function* () {})().constructor,
 ])
 
 /**
